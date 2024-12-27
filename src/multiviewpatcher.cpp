@@ -156,5 +156,5 @@ extern "C" __declspec(dllexport) int AddMultiViewSupportToSPIRV(uint32_t* data, 
         return -1;
     }
 
-    return true;
+    return -1;
 }
