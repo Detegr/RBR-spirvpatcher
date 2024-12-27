@@ -89,7 +89,7 @@ void patchOgVertexShader(std::vector<std::string>& a)
     }
 }
 
-int AddMultiViewSupportToSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
+extern "C" __declspec(dllexport) int AddMultiViewSupportToSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
 {
     spvtools::SpirvTools t(SPV_ENV_VULKAN_1_3);
 
