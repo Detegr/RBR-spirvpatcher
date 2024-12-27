@@ -2,6 +2,7 @@
 #include <optional>
 #include <ranges>
 #include <spirv-tools/libspirv.hpp>
+#include <spirv-tools/optimizer.hpp>
 #include <sstream>
 
 enum ShaderType {
@@ -132,14 +133,21 @@ int AddMultiViewSupportToSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out
             as << l << "\n";
         }
         std::vector<uint32_t> out;
+        std::vector<uint32_t> optimized;
         t.Assemble(as.str(), &out);
 
+        spvtools::Optimizer opt(SPV_ENV_VULKAN_1_3);
+        opt.RegisterPerformancePasses();
+        if (!opt.Run(out.data(), out.size(), &optimized)) {
+            return -1;
+        }
+
         if (data_out) {
-            for (int i = 0; i < out.size(); ++i) {
-                data_out[i] = out[i];
+            for (int i = 0; i < optimized.size(); ++i) {
+                data_out[i] = optimized[i];
             }
         }
-        *size_out = out.size();
+        *size_out = optimized.size();
 
         return 0;
     } else if (typ == BTB) {
