@@ -75,7 +75,7 @@ void patchOgVertexShader(std::vector<std::string>& a)
         auto use = a.begin();
         while (use != a.end()) {
             use = std::find_if(use, a.end(), [i](const auto& x) {
-                return x.contains(std::format(
+                return x.ends_with(std::format(
                     "OpAccessChain %_ptr_Uniform_v4float %c %uint_1 %int_{}", i));
             });
             if (use != a.end()) {
