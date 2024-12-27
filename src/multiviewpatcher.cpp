@@ -62,12 +62,12 @@ void patchOgVertexShader(std::vector<std::string>& a)
 
     // Calculate offsets to the projection matrix
     const auto code_idx = find_idx(a, " = OpLabel");
-    a.insert(a.begin() + code_idx, "%vi = OpLoad %uint %ViewIndex");
-    a.insert(a.begin() + code_idx + 1, "%view_offset = OpIMul %uint %vi %uint_4");
-    a.insert(a.begin() + code_idx + 2, "%i0 = OpIAdd %uint %view_offset %uint_0");
-    a.insert(a.begin() + code_idx + 3, "%i1 = OpIAdd %uint %view_offset %uint_1");
-    a.insert(a.begin() + code_idx + 4, "%i2 = OpIAdd %uint %view_offset %uint_2");
-    a.insert(a.begin() + code_idx + 5, "%i3 = OpIAdd %uint %view_offset %uint_3");
+    a.insert(a.begin() + code_idx + 1, "%vi = OpLoad %uint %ViewIndex");
+    a.insert(a.begin() + code_idx + 2, "%view_offset = OpIMul %uint %vi %uint_4");
+    a.insert(a.begin() + code_idx + 3, "%i0 = OpIAdd %uint %view_offset %uint_0");
+    a.insert(a.begin() + code_idx + 4, "%i1 = OpIAdd %uint %view_offset %uint_1");
+    a.insert(a.begin() + code_idx + 5, "%i2 = OpIAdd %uint %view_offset %uint_2");
+    a.insert(a.begin() + code_idx + 6, "%i3 = OpIAdd %uint %view_offset %uint_3");
 
     // Patch accesses to the projection matrix to take ViewIndex into account
     for (int i = 0; i < 4; ++i) {
