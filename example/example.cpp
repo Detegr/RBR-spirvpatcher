@@ -26,7 +26,7 @@ loadSPIRVBinary(const std::string& filename)
 int main(int argc, char** argv)
 {
     if (argc < 2) {
-        std::cout << "Usage: ./example input.spv" << std::endl;
+        std::cout << "Usage: ./example input.spv <optimize>" << std::endl;
         return -1;
     }
 
@@ -35,12 +35,21 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    int8_t optimize = argc > 2;
+    uint32_t start_reg = 0;
+    uint32_t target_reg = 94;
+    std::cout << "Optimizing: " << (optimize > 0 ? "true" : "false") << std::endl;
+    std::cout << std::format("Patching c.f[{}] to c.f[{}]", start_reg, target_reg) << std::endl;
     uint32_t outsize = 0;
-    AddMultiViewSupportToSPIRV(in->data(), in->size(), nullptr, &outsize);
+    if (ChangeSPIRVMultiViewDataAccessLocation(in->data(), in->size(), nullptr, &outsize, start_reg, target_reg, optimize) != 0) {
+        std::cerr << "Failed" << std::endl;
+        return 0;
+    }
 
+    std::cout << "Input size: " << in->size() << " bytes, output size: " << outsize << " bytes." << std::endl;
     std::vector<uint32_t> out;
     out.resize(outsize);
-    if (AddMultiViewSupportToSPIRV(in->data(), in->size(), out.data(), &outsize)) {
+    if (ChangeSPIRVMultiViewDataAccessLocation(in->data(), in->size(), out.data(), &outsize, start_reg, target_reg, optimize) != 0) {
         std::cerr << "Failed" << std::endl;
         return 0;
     }
