@@ -6,8 +6,14 @@
 #include <sstream>
 
 #include <iostream>
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+
+#ifdef _WIN32
+    #define EXPORT __declspec(dllexport)
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+#else
+    #define EXPORT
+#endif
 
 enum ShaderType {
     VS,
@@ -151,7 +157,7 @@ static void patchVertexShader(std::vector<std::string>& a, uint32_t f_idx, uint3
     patchMatrixAccesses(a, f_idx, offset);
 }
 
-extern "C" __declspec(dllexport) int OptimizeSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
+extern "C" EXPORT int OptimizeSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
 {
     std::vector<uint32_t> in;
     std::vector<uint32_t> optimized;
@@ -172,14 +178,18 @@ extern "C" __declspec(dllexport) int OptimizeSPIRV(uint32_t* data, uint32_t size
     return 0;
 }
 
-extern "C" __declspec(dllexport) int AddSPIRVMultiViewCapability(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
+extern "C" EXPORT int AddSPIRVMultiViewCapability(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
 {
     std::vector<uint32_t> in;
     in.assign(data, data + size);
 
     spvtools::SpirvTools t(SPV_ENV_VULKAN_1_3);
     t.SetMessageConsumer([](spv_message_level_t, const char*, const spv_position_t& position, const char* message) {
-        OutputDebugStringA(std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message).c_str());
+        #ifdef _WIN32
+            OutputDebugStringA(std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message).c_str());
+         #else
+            std::cout << std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message) << std::endl;;
+         #endif
     });
 
     auto disassembled = disassembleShader(t, in);
@@ -219,14 +229,18 @@ extern "C" __declspec(dllexport) int AddSPIRVMultiViewCapability(uint32_t* data,
     }
 }
 
-extern "C" __declspec(dllexport) int ChangeSPIRVMultiViewDataAccessLocation(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out, uint32_t f_idx, uint32_t offset, int8_t optimize)
+extern "C" EXPORT int ChangeSPIRVMultiViewDataAccessLocation(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out, uint32_t f_idx, uint32_t offset, int8_t optimize)
 {
     std::vector<uint32_t> in;
     in.assign(data, data + size);
 
     spvtools::SpirvTools t(SPV_ENV_VULKAN_1_3);
     t.SetMessageConsumer([](spv_message_level_t, const char*, const spv_position_t& position, const char* message) {
-        OutputDebugStringA(std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message).c_str());
+        #ifdef _WIN32
+            OutputDebugStringA(std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message).c_str());
+         #else
+            std::cout << std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message) << std::endl;;
+         #endif
     });
 
     auto disassembled = disassembleShader(t, in);
