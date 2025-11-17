@@ -67,12 +67,18 @@ static std::optional<std::vector<std::string>> disassembleShader(const spvtools:
     return a;
 }
 
-static void addMultiViewCapability(std::vector<std::string>& a)
+static bool addMultiViewCapability(std::vector<std::string>& a)
 {
     if (a.front() == "OpCapability MultiView") {
-        return;
+        #ifdef _WIN32
+            OutputDebugStringA("MultiView capability found, not attempting to patch multiple times");
+        #endif
+        return false;
     }
+
     a.insert(a.begin(), "OpCapability MultiView");
+
+    return true;
 }
 
 static void patchEntryPoint(std::vector<std::string>& a, bool includeViewIndex = true)
@@ -152,9 +158,10 @@ static void patchMatrixAccesses(std::vector<std::string>& a, uint32_t f_idx, uin
 
 static void patchVertexShader(std::vector<std::string>& a, uint32_t f_idx, uint32_t offset)
 {
-    addMultiViewCapability(a);
-    patchEntryPoint(a);
-    patchMatrixAccesses(a, f_idx, offset);
+    if (addMultiViewCapability(a)) {
+        patchEntryPoint(a);
+        patchMatrixAccesses(a, f_idx, offset);
+    }
 }
 
 extern "C" EXPORT int OptimizeSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
@@ -201,29 +208,30 @@ extern "C" EXPORT int AddSPIRVMultiViewCapability(uint32_t* data, uint32_t size,
     const auto typ = detectType(a);
 
     if (typ == VS) {
-        addMultiViewCapability(a);
-        patchEntryPoint(a, false);
+        if (addMultiViewCapability(a)) {
+            patchEntryPoint(a, false);
 
-        std::ostringstream as;
-        for (const auto& l : a) {
-            as << l << "\n";
-        }
-
-        std::vector<uint32_t> out;
-        t.Assemble(as.str(), &out);
-
-        if (!t.Validate(out)) {
-            return -1;
-        }
-
-        if (data_out) {
-            for (int i = 0; i < out.size(); ++i) {
-                data_out[i] = out[i];
+            std::ostringstream as;
+            for (const auto& l : a) {
+                as << l << "\n";
             }
-        }
-        *size_out = out.size();
 
-        return 0;
+            std::vector<uint32_t> out;
+            t.Assemble(as.str(), &out);
+
+            if (!t.Validate(out)) {
+                return -1;
+            }
+
+            if (data_out) {
+                for (int i = 0; i < out.size(); ++i) {
+                    data_out[i] = out[i];
+                }
+            }
+            *size_out = out.size();
+
+            return 0;
+        }
     } else {
         return -1;
     }
