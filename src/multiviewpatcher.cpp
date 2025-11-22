@@ -70,9 +70,6 @@ static std::optional<std::vector<std::string>> disassembleShader(const spvtools:
 static bool addMultiViewCapability(std::vector<std::string>& a)
 {
     if (a.front() == "OpCapability MultiView") {
-        #ifdef _WIN32
-            OutputDebugStringA("MultiView capability found, not attempting to patch multiple times");
-        #endif
         return false;
     }
 
@@ -160,8 +157,10 @@ static void patchVertexShader(std::vector<std::string>& a, uint32_t f_idx, uint3
 {
     if (addMultiViewCapability(a)) {
         patchEntryPoint(a);
-        patchMatrixAccesses(a, f_idx, offset);
     }
+
+    patchMatrixAccesses(a, f_idx, offset);
+}
 }
 
 extern "C" EXPORT int OptimizeSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
@@ -210,28 +209,28 @@ extern "C" EXPORT int AddSPIRVMultiViewCapability(uint32_t* data, uint32_t size,
     if (typ == VS) {
         if (addMultiViewCapability(a)) {
             patchEntryPoint(a, false);
-
-            std::ostringstream as;
-            for (const auto& l : a) {
-                as << l << "\n";
-            }
-
-            std::vector<uint32_t> out;
-            t.Assemble(as.str(), &out);
-
-            if (!t.Validate(out)) {
-                return -1;
-            }
-
-            if (data_out) {
-                for (int i = 0; i < out.size(); ++i) {
-                    data_out[i] = out[i];
-                }
-            }
-            *size_out = out.size();
-
-            return 0;
         }
+
+        std::ostringstream as;
+        for (const auto& l : a) {
+            as << l << "\n";
+        }
+
+        std::vector<uint32_t> out;
+        t.Assemble(as.str(), &out);
+
+        if (!t.Validate(out)) {
+            return -1;
+        }
+
+        if (data_out) {
+            for (int i = 0; i < out.size(); ++i) {
+                data_out[i] = out[i];
+            }
+        }
+        *size_out = out.size();
+
+        return 0;
     } else {
         return -1;
     }
