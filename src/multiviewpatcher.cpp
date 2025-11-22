@@ -102,21 +102,42 @@ static void patchMatrixAccesses(std::vector<std::string>& a, uint32_t f_idx, uin
 {
     static int i = 0;
 
-    a.insert(find_it(a, "OpDecorate"), "OpDecorate %ViewIndex BuiltIn ViewIndex");
+    const auto viewindex_row = find_idx(a, "BuiltIn ViewIndex");
+    const auto viewindex_already_defined = viewindex_row != a.size();
+    std::string viewindex_variable = "%ViewIndex";
+
+    if (viewindex_already_defined)
+    {
+        const auto& vi = a[viewindex_row];
+        const auto variable_start_it = std::find_if(vi.begin(), vi.end(), [](const char c) {
+            return c == '%';
+        });
+        const auto variable_end_it = std::find_if(variable_start_it, vi.end(), [](const char c) {
+            return c == ' ';
+        });
+
+        viewindex_variable = std::string(variable_start_it, variable_end_it);
+    } else {
+        a.insert(find_it(a, "OpDecorate"), std::format("OpDecorate {} BuiltIn ViewIndex", viewindex_variable));
+    }
 
     // Calculate offsets to the given matrix
     // c_idx is the index in c.f float constant array that's provided to the shader
     // offset is the offset to the c.f array where the data for other views start
 
     const auto fun_idx = find_idx(a, " = OpLabel") - 2;
-    // Define ViewIndex variable and shader_data_begin constant
-    a.insert(a.begin() + fun_idx, "%ptr = OpTypePointer Input %uint");
-    a.insert(a.begin() + fun_idx + 1, "%ViewIndex = OpVariable %ptr Input");
-    a.insert(a.begin() + fun_idx + 2, std::format("%shader_data_begin = OpConstant %uint {}", offset));
-    a.insert(a.begin() + fun_idx + 3, std::format("%f_idx = OpConstant %uint {}", f_idx));
+    int f = 0;
+    if (!viewindex_already_defined)
+    {
+        // Define ViewIndex variable and shader_data_begin constant
+        a.insert(a.begin() + fun_idx + (f++), "%ptr = OpTypePointer Input %uint");
+        a.insert(a.begin() + fun_idx + (f++), "%ViewIndex = OpVariable %ptr Input");
+    }
+    a.insert(a.begin() + fun_idx + (f++), std::format("%shader_data_begin = OpConstant %uint {}", offset));
+    a.insert(a.begin() + fun_idx + (f++), std::format("%f_idx = OpConstant %uint {}", f_idx));
 
     const auto code_idx = find_idx(a, " = OpLabel");
-    a.insert(a.begin() + code_idx + 1, "%vi = OpLoad %uint %ViewIndex");
+    a.insert(a.begin() + code_idx + 1, std::format("%vi = OpLoad %uint {}", viewindex_variable));
     a.insert(a.begin() + code_idx + 2, "%view_offset = OpIMul %uint %vi %uint_4");
     a.insert(a.begin() + code_idx + 3, "%data_offset = OpIAdd %uint %shader_data_begin %view_offset");
     if (f_idx > 0) {
