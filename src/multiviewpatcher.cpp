@@ -161,6 +161,44 @@ static void patchVertexShader(std::vector<std::string>& a, uint32_t f_idx, uint3
 
     patchMatrixAccesses(a, f_idx, offset);
 }
+
+extern "C" EXPORT int DisassembleSPIRV(uint32_t* data, uint32_t size, int8_t* data_out, uint32_t* size_out)
+{
+    std::vector<uint32_t> in;
+    in.assign(data, data + size);
+
+    spvtools::SpirvTools t(SPV_ENV_VULKAN_1_3);
+    t.SetMessageConsumer([](spv_message_level_t, const char*, const spv_position_t& position, const char* message) {
+        #ifdef _WIN32
+            OutputDebugStringA(std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message).c_str());
+         #else
+            std::cout << std::format("SPIRV-Tools: {}:{}: {}", position.line, position.column, message) << std::endl;;
+         #endif
+    });
+
+    auto disassembled = disassembleShader(t, in);
+    if (!disassembled) {
+        return -1;
+    }
+
+    auto a = disassembled.value();
+    std::ostringstream as;
+    for (const auto& l : a) {
+	as << l << "\n";
+    }
+
+    const auto out = as.str();
+    if (size_out) {
+        *size_out = out.size();
+    }
+
+    if (data_out) {
+	for (int i = 0; i < out.size(); ++i) {
+	    data_out[i] = out[i];
+	}
+    }
+
+    return 0;
 }
 
 extern "C" EXPORT int OptimizeSPIRV(uint32_t* data, uint32_t size, uint32_t* data_out, uint32_t* size_out)
@@ -270,8 +308,6 @@ extern "C" EXPORT int ChangeSPIRVMultiViewDataAccessLocation(uint32_t* data, uin
                 return -1;
             }
             outvec = optimized;
-        } else if (!t.Validate(outvec)) {
-            return -1;
         }
 
         if (data_out) {
@@ -280,6 +316,11 @@ extern "C" EXPORT int ChangeSPIRVMultiViewDataAccessLocation(uint32_t* data, uin
             }
         }
         *size_out = outvec.size();
+
+	if (optimize == 0 && !t.Validate(outvec)) {
+            return -1;
+        }
+
         return 0;
     } else if (typ == VS) {
         patchVertexShader(a, f_idx, offset);
@@ -301,8 +342,6 @@ extern "C" EXPORT int ChangeSPIRVMultiViewDataAccessLocation(uint32_t* data, uin
                 return -1;
             }
             outvec = optimized;
-        } else if (!t.Validate(outvec)) {
-            return -1;
         }
 
         if (data_out) {
@@ -311,6 +350,10 @@ extern "C" EXPORT int ChangeSPIRVMultiViewDataAccessLocation(uint32_t* data, uin
             }
         }
         *size_out = outvec.size();
+
+	if (optimize == 0 && !t.Validate(outvec)) {
+            return -1;
+        }
 
         return 0;
     }
